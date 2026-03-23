@@ -1,5 +1,4 @@
 package com.craftinginterpreters.lox;
-import java.lang.foreign.ValueLayout;
 import java.util.ArrayList;
 import java.util.List;
 import static com.craftinginterpreters.lox.TokenType.*;
