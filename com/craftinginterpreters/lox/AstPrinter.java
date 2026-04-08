@@ -4,7 +4,7 @@ class AstPrinter implements Expr.Visitor<String> {
 	String print(Expr expr) {
 		return expr.accept(this);
 	}
-
+	
 	@Override
 	public String visitBinaryExpr(Expr.Binary expr) {
 		return parenthesize(expr.operator.lexeme, expr.left, expr.right);
@@ -39,6 +39,16 @@ class AstPrinter implements Expr.Visitor<String> {
 	@Override
 	public String visitAssignExpr(Expr.Assign expr) {
   		return parenthesize("=" + expr.name.lexeme, expr.value);
+	}
+
+	@Override
+	public String visitCallExpr(Expr.Call expr) {
+		Expr[] exprs = new Expr[expr.arguments.size() + 1];
+		exprs[0] = expr.callee;
+		for (int i = 0; i < expr.arguments.size(); i++) {
+			exprs[i + 1] = expr.arguments.get(i);
+		}
+		return parenthesize("call", exprs);
 	}
 
 	private String parenthesize(String name, Expr... exprs) {

@@ -1,6 +1,6 @@
 package com.craftinginterpreters.Lox;
 
-//import java.util.List;
+import java.util.List;
 
 abstract class Expr {
   interface Visitor<R> {
@@ -11,7 +11,25 @@ abstract class Expr {
     R visitLogicalExpr(Logical expr);
     R visitUnaryExpr(Unary expr);
     R visitVariableExpr(Variable expr);
+    R visitCallExpr(Call expr);
   }
+  static class Call extends Expr {
+    Call(Expr callee, Token paren, List<Expr> arguments) {
+      this.callee = callee;
+      this.paren = paren;
+      this.arguments = arguments;
+    }
+
+    @Override
+    <R> R accept(Visitor<R> visitor) {
+      return visitor.visitCallExpr(this);
+    }
+
+    final Expr callee;
+    final Token paren;
+    final List<Expr> arguments;
+  }
+
   static class Assign extends Expr {
     Assign(Token name, Expr value) {
       this.name = name;
