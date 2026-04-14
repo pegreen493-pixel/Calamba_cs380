@@ -55,11 +55,16 @@ public class Lox {
 		List<Stmt> statements = parser.parse();
 		//Expr expression = parser.parse();
 
-		if (hadError)
-			return;
+		if (hadError) return;
 
+		Resolver resolver = new Resolver(interpreter);
+		resolver.resolve(statements);
+
+		if (hadError) return;
+		
 		interpreter.interpret(statements);
 	}
+
 
 	static void error(int line, String message) {
 		report(line, "", message);
