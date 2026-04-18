@@ -1,7 +1,18 @@
 package com.craftinginterpreters.Lox;
+import static com.craftinginterpreters.Lox.TokenType.BANG;
+import static com.craftinginterpreters.Lox.TokenType.BANG_EQUAL;
+import static com.craftinginterpreters.Lox.TokenType.EQUAL_EQUAL;
+import static com.craftinginterpreters.Lox.TokenType.GREATER;
+import static com.craftinginterpreters.Lox.TokenType.GREATER_EQUAL;
+import static com.craftinginterpreters.Lox.TokenType.LESS;
+import static com.craftinginterpreters.Lox.TokenType.LESS_EQUAL;
+import static com.craftinginterpreters.Lox.TokenType.MINUS;
+import static com.craftinginterpreters.Lox.TokenType.PLUS;
+import static com.craftinginterpreters.Lox.TokenType.SLASH;
+import static com.craftinginterpreters.Lox.TokenType.STAR;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 class Interpreter implements Expr.Visitor<Object>,
@@ -55,6 +66,25 @@ class Interpreter implements Expr.Visitor<Object>,
     }
 
     @Override
+    public Object visitSetExpr(Expr.Set expr) {
+        Object object = evaluate(expr.object);
+        
+        if (!(object instanceof LoxInstance)) {
+            throw new RuntimeError(expr.name, "Only instances have fields.");
+
+        }
+
+        Object value = evaluate(expr.value);
+        ((LoxInstance)object).set(expr.name, value);
+        return value;
+    }
+
+    @Override
+    public Object visitThisExpr(Expr.This expr) {
+        return lookUpVariable(expr.keyword, expr);
+    }
+
+    @Override
     public Object visitUnaryExpr(Expr.Unary expr) {
         Object right = evaluate(expr.right);
 
@@ -68,10 +98,11 @@ class Interpreter implements Expr.Visitor<Object>,
         return null;
     }
 
-    @Override
+   @Override
     public Object visitVariableExpr(Expr.Variable expr) {
     return lookUpVariable(expr.name, expr);
   }
+ 
     private Object lookUpVariable(Token name, Expr expr) {
     Integer distance = locals.get(expr);   
     if (distance != null) {
@@ -166,13 +197,28 @@ class Interpreter implements Expr.Visitor<Object>,
     }
 
     @Override
+    public Void visitClassStmt(Stmt.Class stmt) {
+        environment.define(stmt.name.lexeme, null);
+
+        Map<String, LoxFunction> methods = new HashMap<>();
+        for (Stmt.Function method : stmt.methods) {
+            LoxFunction function = new LoxFunction(method, environment, method.name.lexeme.equals("init"));
+            methods.put(method.name.lexeme, function);
+        }
+
+        LoxClass klass = new LoxClass(stmt.name.lexeme, methods);
+        environment.assign(stmt.name, klass);
+        return null;
+    }
+
+    @Override
     public Void visitExpressionStmt(Stmt.Expression stmt) {
     evaluate(stmt.expression);
     return null;
   }
     @Override
     public Void visitFunctionStmt(Stmt.Function stmt) {
-        LoxFunction function = new LoxFunction(stmt, environment);
+        LoxFunction function = new LoxFunction(stmt, environment, false);
         environment.define(stmt.name.lexeme, function);
         return null;
     }
@@ -241,47 +287,41 @@ class Interpreter implements Expr.Visitor<Object>,
         Object left = evaluate(expr.left);
         Object right = evaluate(expr.right);
 
-            switch (expr.operator.type) {
-            case BANG_EQUAL -> !isEqual(left, right);
-            case EQUAL_EQUAL -> isEqual(left, right);
-            case GREATER -> {
+        switch (expr.operator.type) {
+            case BANG_EQUAL:
+                return !isEqual(left, right);
+            case EQUAL_EQUAL:
+                return isEqual(left, right);
+            case GREATER:
                 checkNumberOperands(expr.operator, left, right);
-                yield (double) left > (double) right;
-            }
-            case GREATER_EQUAL -> {
+                return (double) left > (double) right;
+            case GREATER_EQUAL:
                 checkNumberOperands(expr.operator, left, right);
-                yield (double) left >= (double) right;
-            }
-            case LESS -> {
+                return (double) left >= (double) right;
+            case LESS:
                 checkNumberOperands(expr.operator, left, right);
-                yield (double) left < (double) right;
-            }
-            case LESS_EQUAL -> {
+                return (double) left < (double) right;
+            case LESS_EQUAL:
                 checkNumberOperands(expr.operator, left, right);
-                yield (double) left <= (double) right;
-            }
-            case MINUS -> {
+                return (double) left <= (double) right;
+            case MINUS:
                 checkNumberOperands(expr.operator, left, right);
-                yield (double) left - (double) right;
-            }
-            case PLUS -> {
+                return (double) left - (double) right;
+            case PLUS:
                 if (left instanceof Double && right instanceof Double) {
-                    yield (double) left + (double) right;
+                    return (double) left + (double) right;
                 }
                 if (left instanceof String && right instanceof String) {
-                    yield (String) left + (String) right;
+                    return (String) left + (String) right;
                 }
                 throw new RuntimeError(expr.operator,
                         "Operands must be numbers or strings.");
-            }
-            case STAR -> {
+            case STAR:
                 checkNumberOperands(expr.operator, left, right);
-                yield (double) left * (double) right;
-            }
-            case SLASH -> {
+                return (double) left * (double) right;
+            case SLASH:
                 checkNumberOperands(expr.operator, left, right);
-                yield (double) left / (double) right;
-            }
+                return (double) left / (double) right;
         }
         
         return null;
@@ -310,4 +350,18 @@ class Interpreter implements Expr.Visitor<Object>,
         return function.call(this, arguments);
     }
 
+    @Override
+    public Object visitGetExpr(Expr.Get expr) {
+        Object object = evaluate(expr.object);
+        if (object instanceof LoxInstance) {
+            return ((LoxInstance) object).get(expr.name);
+        }
+
+        throw new RuntimeError(expr.name,
+                "Only instances have properties.");
+
 }
+
+}
+
+
